@@ -23,6 +23,7 @@ from ha_spacexai_auth import (
     SpaceXaiEntitlementError,
     TokenSet,
     authorization_headers,
+    ensure_fresh,
     generate_pkce,
     poll_device_token,
     poll_token,
@@ -86,6 +87,7 @@ def test_public_exports() -> None:
         "SpaceXaiEntitlementError",
         "token_data_updates",
         "authorization_headers",
+        "ensure_fresh",
         "CLIENT_ID",
         "SCOPES",
         "TOKEN_URL",
@@ -97,6 +99,7 @@ def test_public_exports() -> None:
     assert pkg.generate_pkce is generate_pkce
     assert pkg.TokenSet is TokenSet
     assert pkg.authorization_headers is authorization_headers
+    assert pkg.ensure_fresh is ensure_fresh
     assert pkg.token_data_updates is token_data_updates
     assert pkg.refresh_access_token is refresh_access_token
     assert issubclass(SpaceXaiAuthExpired, SpaceXaiAuthError)

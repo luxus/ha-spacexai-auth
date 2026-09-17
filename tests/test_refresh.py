@@ -7,6 +7,7 @@ from ha_spacexai_auth import (
     TOKEN_URL,
     SpaceXaiAuthExpired,
     TokenSet,
+    ensure_fresh,
     refresh_access_token,
 )
 from tests.fakes import FakeSession
@@ -76,3 +77,43 @@ async def test_refresh_without_refresh_token() -> None:
     )
     with pytest.raises(SpaceXaiAuthExpired, match="no refresh_token"):
         await refresh_access_token(FakeSession([]), tokens)
+
+
+async def test_ensure_fresh_returns_same_tokens_when_not_near_expiry() -> None:
+    tokens = _tokens()
+    tokens.expires_at = 1_000.0
+    session = FakeSession([])
+    result = await ensure_fresh(session, tokens, skew_seconds=60, time_fn=lambda: 900.0)
+    assert result is tokens
+    assert session.calls == []
+
+
+async def test_ensure_fresh_refreshes_when_within_skew() -> None:
+    tokens = _tokens()
+    tokens.expires_at = 1_050.0
+    session = FakeSession(
+        [(200, {"access_token": "new-at", "refresh_token": "new-rt", "expires_in": 120})]
+    )
+    result = await ensure_fresh(session, tokens, skew_seconds=60, time_fn=lambda: 1_000.0)
+    assert result.access_token == "new-at"
+    assert result.refresh_token == "new-rt"
+    assert result.expires_at == 1_120.0
+    assert session.calls, "expected a refresh POST"
+
+
+async def test_ensure_fresh_refreshes_on_skew_boundary() -> None:
+    tokens = _tokens()
+    tokens.expires_at = 1_060.0
+    session = FakeSession([(200, {"access_token": "new-at", "expires_in": 60})])
+    result = await ensure_fresh(session, tokens, skew_seconds=60, time_fn=lambda: 1_000.0)
+    assert result.access_token == "new-at"
+    assert session.calls
+
+
+async def test_ensure_fresh_skips_refresh_without_expires_at() -> None:
+    tokens = _tokens()
+    tokens.expires_at = None  # type: ignore[assignment]
+    session = FakeSession([])
+    result = await ensure_fresh(session, tokens, time_fn=lambda: 1_000.0)
+    assert result is tokens
+    assert session.calls == []

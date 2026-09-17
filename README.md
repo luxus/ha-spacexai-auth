@@ -45,6 +45,7 @@ from ha_spacexai_auth import (
     SpaceXaiEntitlementError,
     TokenSet,
     authorization_headers,
+    ensure_fresh,
     generate_pkce,
     poll_device_token,   # alias of poll_token
     poll_token,
@@ -64,8 +65,9 @@ hass.config_entries.async_update_entry(entry, data=tokens.to_entry_data())
 # API calls:
 headers = authorization_headers(tokens.access_token)
 
-# On expiry, merge token keys only (auth_method / api_key stay put):
-tokens = await refresh_access_token(session, tokens)
+# Refresh if expires_at - 60s <= now. If expires_at is missing/None, tokens
+# are returned unchanged (no refresh).
+tokens = await ensure_fresh(session, tokens)
 hass.config_entries.async_update_entry(
     entry, data={**entry.data, **token_data_updates(tokens)}
 )
@@ -81,6 +83,7 @@ Package import path: **`ha_spacexai_auth`**.
 | `start_device_auth` / `request_device_code` | RFC 8628 device-code start |
 | `poll_token` / `poll_device_token` | Poll until token, `slow_down`, or expiry |
 | `refresh_access_token` | `grant_type=refresh_token`; keep old RT if omitted |
+| `ensure_fresh` | Refresh when `expires_at - skew_seconds <= now` (default skew 60s). Missing/`None` `expires_at` → return tokens as-is |
 | `TokenSet` | `access_token`, `refresh_token`, `expires_at`, `token_type`, `scope` |
 | `TokenSet.to_entry_data` / `from_entry_data` | HA config-entry roundtrip |
 | `token_data_updates` | Token keys only (no `auth_method` / `api_key`) |
@@ -95,7 +98,7 @@ Package import path: **`ha_spacexai_auth`**.
 | --- | --- |
 | `ha_spacexai_auth.const` | Issuer, discovery, device/token/revoke URLs, public client, scopes |
 | `ha_spacexai_auth.device_flow` | `start_device_auth` / `poll_token` (RFC 8628 + PKCE S256) |
-| `ha_spacexai_auth.refresh` | Refresh; persist rotated refresh token |
+| `ha_spacexai_auth.refresh` | `refresh_access_token`, `ensure_fresh`; persist rotated refresh token |
 | `ha_spacexai_auth.store` | `TokenSet`, `to_entry_data` / `from_entry_data` |
 | `ha_spacexai_auth.headers` | Bearer `Authorization` |
 | `ha_spacexai_auth.errors` | `SpaceXaiAuthError`, `SpaceXaiAuthExpired`, `SpaceXaiEntitlementError` |

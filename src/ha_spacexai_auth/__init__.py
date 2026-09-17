@@ -15,6 +15,7 @@ imports this package:
         SpaceXaiEntitlementError,
         TokenSet,
         authorization_headers,
+        ensure_fresh,
         generate_pkce,
         poll_token,
         refresh_access_token,
@@ -58,7 +59,7 @@ from .device_flow import (
 )
 from .errors import SpaceXaiAuthError, SpaceXaiAuthExpired, SpaceXaiEntitlementError
 from .headers import authorization_headers
-from .refresh import refresh_access_token
+from .refresh import ensure_fresh, refresh_access_token
 from .store import TokenSet, token_data_updates
 
 __version__ = "0.1.0"
@@ -88,6 +89,7 @@ __all__ = [
     "SpaceXaiEntitlementError",
     "TokenSet",
     "authorization_headers",
+    "ensure_fresh",
     "generate_pkce",
     "poll_device_token",
     "poll_token",

@@ -23,6 +23,35 @@ def _oauth_error(payload: Any) -> tuple[str | None, str]:
     return (str(error) if error else None), str(description)
 
 
+async def ensure_fresh(
+    session: HttpSession,
+    tokens: TokenSet,
+    *,
+    skew_seconds: float = 60,
+    client_id: str = CLIENT_ID,
+    token_url: str = TOKEN_URL,
+    time_fn: TimeFn | None = None,
+) -> TokenSet:
+    """Return ``tokens``, refreshing when expiry is within ``skew_seconds``.
+
+    Refreshes when ``expires_at - skew_seconds <= now``. If ``expires_at``
+    is missing or ``None``, return ``tokens`` unchanged (no refresh).
+    """
+    now = (time_fn or time.time)()
+    expires_at = getattr(tokens, "expires_at", None)
+    if expires_at is None:
+        return tokens
+    if float(expires_at) - skew_seconds > now:
+        return tokens
+    return await refresh_access_token(
+        session,
+        tokens,
+        client_id=client_id,
+        token_url=token_url,
+        time_fn=time_fn,
+    )
+
+
 async def refresh_access_token(
     session: HttpSession,
     tokens: TokenSet,
